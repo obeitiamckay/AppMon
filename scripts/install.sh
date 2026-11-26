@@ -25,14 +25,15 @@ if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
   postgresql-setup --initdb
 fi
 
-PG_HBA="/var/lib/pgsql/data/pg_hba.conf"
-if [ -f "${PG_HBA}" ]; then
-  sed -i -E 's/^(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)ident/\1scram-sha-256/' "${PG_HBA}"
-  sed -i -E 's/^(host\s+all\s+all\s+::1\/128\s+)ident/\1scram-sha-256/' "${PG_HBA}"
-fi
-
 systemctl enable --now postgresql
-systemctl reload postgresql
+
+PG_HBA=$(su - postgres -c "psql -tAc 'SHOW hba_file'" | tr -d '[:space:]')
+if [ -f "${PG_HBA}" ]; then
+  sed -i -E 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+(127\.0\.0\.1\/32|::1\/128)[[:space:]]+)ident/\1scram-sha-256/' "${PG_HBA}"
+  sed -i -E 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+(127\.0\.0\.1\/32|::1\/128)[[:space:]]+)peer/\1scram-sha-256/' "${PG_HBA}"
+fi
+su - postgres -c "psql -c \"ALTER SYSTEM SET password_encryption = 'scram-sha-256';\" -c \"SELECT pg_reload_conf();\""
+systemctl restart postgresql
 
 DB_PASS="${DB_PASS:-$(openssl rand -hex 16)}"
 if [ -f "${CONF_DIR}/.env" ]; then
