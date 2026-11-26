@@ -9,6 +9,7 @@ echo "Updating soc-monitor in ${APP_DIR}..."
 cd "${APP_DIR}"
 
 if [ -d .git ]; then
+  git config --global --add safe.directory "${APP_DIR}" || true
   git pull --ff-only
 fi
 

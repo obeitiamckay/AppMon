@@ -27,10 +27,12 @@ fi
 
 systemctl enable --now postgresql
 
+git config --global --add safe.directory "${APP_DIR}" || true
+
 PG_HBA=$(su - postgres -c "psql -tAc 'SHOW hba_file'" | tr -d '[:space:]')
 if [ -f "${PG_HBA}" ]; then
-  sed -i -E 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+(127\.0\.0\.1\/32|::1\/128)[[:space:]]+)ident/\1scram-sha-256/' "${PG_HBA}"
-  sed -i -E 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+(127\.0\.0\.1\/32|::1\/128)[[:space:]]+)peer/\1scram-sha-256/' "${PG_HBA}"
+  sed -i -E '/^host[[:space:]]/ s/[[:space:]]+ident([[:space:]]*#.*)?$/ scram-sha-256\1/' "${PG_HBA}"
+  sed -i -E '/^host[[:space:]]/ s/[[:space:]]+peer([[:space:]]*#.*)?$/ scram-sha-256\1/' "${PG_HBA}"
 fi
 su - postgres -c "psql -c \"ALTER SYSTEM SET password_encryption = 'scram-sha-256';\" -c \"SELECT pg_reload_conf();\""
 systemctl restart postgresql
