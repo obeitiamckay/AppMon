@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Grupos y Umbrales - soc-monitor{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Grupos de Servidores y Umbrales</h1>
+{% if user.role in ["admin", "operador"] %}
+<div class="grid grid-cols-2 gap-6 mb-6 text-sm">
+  <form method="post" action="/groups" class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3">
+    <h2 class="font-semibold text-base">Crear Grupo</h2>
+    <input name="name" placeholder="Nombre (ej. Web, BD)" required class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+    <input name="description" placeholder="Descripción" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+    <input name="scan_schedule" value="02:00" placeholder="Horario HH:MM" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+    <button class="bg-cyan-600 hover:bg-cyan-500 px-4 py-1.5 rounded font-semibold">Crear Grupo</button>
+  </form>
+
+  <form method="post" action="/groups/thresholds" class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3">
+    <h2 class="font-semibold text-base">Configurar Umbral</h2>
+    <div class="grid grid-cols-2 gap-2">
+      <select name="group_id" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="">-- Por Grupo --</option>
+        {% for g in groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+      </select>
+      <select name="host_id" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="">-- O Por Host --</option>
+        {% for h in hosts %}<option value="{{ h.id }}">{{ h.hostname }}</option>{% endfor %}
+      </select>
+      <select name="metric_name" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="disk_pct">Disco (%)</option>
+        <option value="cpu_pct">CPU (%)</option>
+        <option value="memory_pct">Memoria RAM (%)</option>
+        <option value="swap_pct">Swap (%)</option>
+        <option value="disk_inode_pct">Inodos (%)</option>
+      </select>
+      <input name="sustained_minutes" type="number" value="0" placeholder="Minutos sostenidos" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <input name="warning_value" type="number" step="0.1" placeholder="Warning" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <input name="critical_value" type="number" step="0.1" placeholder="Critical" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+    </div>
+    <button class="bg-emerald-600 hover:bg-emerald-500 px-4 py-1.5 rounded font-semibold">Guardar Umbral</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-lg mb-6">
+  <h2 class="font-semibold mb-2">Grupos</h2>
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-800"><th class="py-2">Nombre</th><th>Descripción</th><th>Horario</th></tr></thead>
+    <tbody>
+      {% for g in groups %}<tr class="border-b border-slate-800/60"><td class="py-2">{{ g.name }}</td><td>{{ g.description or "-" }}</td><td>{{ g.scan_schedule }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+  <h2 class="font-semibold mb-2">Umbrales Personalizados</h2>
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-800"><th class="py-2">Métrica</th><th>Grupo ID</th><th>Host ID</th><th>Warning</th><th>Critical</th><th>Sostenido (min)</th></tr></thead>
+    <tbody>
+      {% for t in thresholds %}<tr class="border-b border-slate-800/60"><td class="py-2">{{ t.metric_name }}</td><td>{{ t.group_id or "-" }}</td><td>{{ t.host_id or "-" }}</td><td>{{ t.warning_value }}</td><td>{{ t.critical_value }}</td><td>{{ t.sustained_minutes }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

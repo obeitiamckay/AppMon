@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Reportes - soc-monitor{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Reportes Diarios y Ejecuciones</h1>
+  {% if user.role in ["admin", "operador"] %}
+  <form method="post" action="/scans/run">
+    <button class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded text-sm font-semibold">Re-ejecutar Escaneo</button>
+  </form>
+  {% endif %}
+</div>
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-lg mb-6">
+  <h2 class="font-semibold mb-3">Reportes Generados</h2>
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-800"><th class="py-2">Título</th><th>Fecha</th><th>Resumen</th><th>Descargas</th></tr></thead>
+    <tbody>
+      {% for r in reports %}
+      <tr class="border-b border-slate-800/60">
+        <td class="py-2">{{ r.title }}</td>
+        <td>{{ r.created_at }}</td>
+        <td>OK: {{ r.summary_stats.get("ok_hosts", 0) }} | Warn: {{ r.summary_stats.get("warning_hosts", 0) }} | Crit: {{ r.summary_stats.get("critical_hosts", 0) }}</td>
+        <td class="flex gap-2 py-2">
+          <a href="/reports/{{ r.id }}/download/html" target="_blank" class="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-xs">Ver HTML</a>
+          <a href="/reports/{{ r.id }}/download/pdf" class="bg-rose-800 hover:bg-rose-700 px-2.5 py-1 rounded text-xs">PDF</a>
+          <a href="/reports/{{ r.id }}/download/json" class="bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded text-xs">JSON (IA)</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

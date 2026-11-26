@@ -1,0 +1,11 @@
+[Unit]
+Description=SOC-Monitor One-Shot Daily Scan
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=socmonitor
+Group=socmonitor
+WorkingDirectory=/opt/soc-monitor
+EnvironmentFile=/etc/soc-monitor/.env
+ExecStart=/opt/soc-monitor/.venv/bin/python -m app.main --run-once

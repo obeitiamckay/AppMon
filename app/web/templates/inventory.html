@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Inventario - soc-monitor{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Inventario de Servidores &amp; Credenciales</h1>
+{% if msg %}
+<div class="bg-cyan-950 border border-cyan-700 text-cyan-200 px-4 py-2 rounded mb-4 text-sm">{{ msg }}</div>
+{% endif %}
+
+{% if user.role in ["admin", "operador"] %}
+<div class="grid grid-cols-2 gap-6 mb-6">
+  <form method="post" action="/inventory/hosts" class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3 text-sm">
+    <h2 class="font-semibold text-base">Agregar Servidor</h2>
+    <div class="grid grid-cols-2 gap-2">
+      <input name="hostname" placeholder="Hostname" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <input name="ip_address" placeholder="IP / FQDN" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <select name="os_type" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="linux">Linux (SSH)</option>
+        <option value="windows">Windows (WinRM HTTPS)</option>
+      </select>
+      <input name="port" type="number" value="22" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <select name="group_id" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="">-- Grupo --</option>
+        {% for g in groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+      </select>
+      <select name="credential_id" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="">-- Credencial --</option>
+        {% for c in creds %}<option value="{{ c.id }}">{{ c.name }} ({{ c.auth_type }})</option>{% endfor %}
+      </select>
+    </div>
+    <button class="bg-cyan-600 hover:bg-cyan-500 px-4 py-1.5 rounded font-semibold">Guardar Servidor</button>
+  </form>
+
+  {% if user.role == "admin" %}
+  <form method="post" action="/inventory/credentials" class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3 text-sm">
+    <h2 class="font-semibold text-base">Nueva Credencial (Cifrada Fernet)</h2>
+    <div class="grid grid-cols-2 gap-2">
+      <input name="name" placeholder="Nombre credencial" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <select name="auth_type" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+        <option value="ssh_key">SSH Private Key</option>
+        <option value="winrm_ntlm">WinRM NTLM</option>
+        <option value="winrm_kerberos">WinRM Kerberos</option>
+        <option value="vault">HashiCorp Vault</option>
+      </select>
+      <input name="username" placeholder="Usuario servicio" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+      <input name="vault_path" placeholder="Vault path (opcional)" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+    </div>
+    <textarea name="secret" rows="2" placeholder="Llave privada PEM o contraseña" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5"></textarea>
+    <button class="bg-emerald-600 hover:bg-emerald-500 px-4 py-1.5 rounded font-semibold">Guardar Credencial</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-800"><th class="py-2">Host</th><th>IP</th><th>SO</th><th>Puerto</th><th>Grupo</th><th>Estado</th><th>Activo</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for h in hosts %}
+      <tr class="border-b border-slate-800/60">
+        <td class="py-2 font-medium">{{ h.hostname }}</td>
+        <td>{{ h.ip_address }}</td>
+        <td>{{ h.os_type }}</td>
+        <td>{{ h.port }}</td>
+        <td>{{ h.group.name if h.group else "-" }}</td>
+        <td>{{ h.last_status }}</td>
+        <td>{{ "Sí" if h.is_active else "No" }}</td>
+        <td class="flex gap-2 py-2">
+          {% if user.role in ["admin", "operador"] %}
+          <form method="post" action="/inventory/hosts/{{ h.id }}/test"><button class="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-xs">Probar</button></form>
+          <form method="post" action="/inventory/hosts/{{ h.id }}/toggle"><button class="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-xs">Toggle</button></form>
+          {% endif %}
+          {% if user.role == "admin" %}
+          <form method="post" action="/inventory/hosts/{{ h.id }}/delete"><button class="bg-rose-900 hover:bg-rose-800 px-2 py-1 rounded text-xs">Eliminar</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ report.title }}</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }
+    body { font-family: "Inter", "Segoe UI", Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px; background: #f8fafc; font-size: 13px; }
+    .cover { background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 10px; margin-bottom: 24px; }
+    .cover h1 { margin: 0 0 8px 0; font-size: 24px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 16px; }
+    .stat-card { background: #1e293b; padding: 12px; border-radius: 8px; text-align: center; }
+    .stat-card .num { font-size: 22px; font-weight: 700; display: block; }
+    .stat-card .lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    .section { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 18px; page-break-inside: avoid; }
+    h2 { margin-top: 0; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; font-size: 17px; }
+    h3 { color: #334155; font-size: 14px; margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; font-weight: 600; color: #0f172a; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .sev-critical, .sev-crítica { background: #fee2e2; color: #991b1b; }
+    .sev-high, .sev-alta { background: #ffedd5; color: #9a3412; }
+    .sev-medium, .sev-media { background: #fef9c3; color: #854d0e; }
+    .sev-low, .sev-baja { background: #dcfce7; color: #166534; }
+    .status-permitido { color: #166534; font-weight: 600; }
+    .status-no-autorizado { color: #991b1b; font-weight: 700; }
+    .status-revisar { color: #9a3412; font-weight: 600; }
+    .filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filters select, .filters input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; }
+    code { background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 11px; }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <h1>{{ report.title }}</h1>
+    <div>Fecha: {{ report.generated_at }} | Duración: {{ report.duration_seconds }}s | Scan ID: #{{ report.scan_run_id }}</div>
+    <div class="meta-grid">
+      <div class="stat-card"><span class="num">{{ report.summary.total_hosts }}</span><span class="lbl">Total Hosts</span></div>
+      <div class="stat-card"><span class="num" style="color:#4ade80">{{ report.summary.ok_hosts }}</span><span class="lbl">OK</span></div>
+      <div class="stat-card"><span class="num" style="color:#facc15">{{ report.summary.warning_hosts }}</span><span class="lbl">Warning</span></div>
+      <div class="stat-card"><span class="num" style="color:#f87171">{{ report.summary.critical_hosts }}</span><span class="lbl">Críticos</span></div>
+      <div class="stat-card"><span class="num" style="color:#94a3b8">{{ report.summary.unreachable_hosts }}</span><span class="lbl">Inalcanzables</span></div>
+      <div class="stat-card"><span class="num" style="color:#38bdf8">{{ report.findings|length }}</span><span class="lbl">Hallazgos</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>1. Resumen Ejecutivo</h2>
+    <p>{{ report.executive_summary }}</p>
+    <h3>Top 10 Hallazgos Más Importantes</h3>
+    <ol>
+      {% for f in report.top_findings %}
+      <li><span class="badge sev-{{ f.severidad }}">{{ f.severidad }}</span> <strong>[{{ f.host }}]</strong> {{ f.titulo }} — <em>{{ f.recomendacion }}</em></li>
+      {% else %}
+      <li>No se detectaron hallazgos críticos o altos en esta ejecución.</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>2. Tabla Global de Hallazgos</h2>
+    <div class="filters no-print">
+      <select id="filterSev" onchange="filterFindings()">
+        <option value="">Todas las severidades</option>
+        <option value="critical">Crítica</option>
+        <option value="high">Alta</option>
+        <option value="medium">Media</option>
+        <option value="low">Baja</option>
+      </select>
+      <select id="filterCat" onchange="filterFindings()">
+        <option value="">Todas las categorías</option>
+        {% for cat in report.categories %}
+        <option value="{{ cat }}">{{ cat }}</option>
+        {% endfor %}
+      </select>
+      <input id="filterHost" type="text" placeholder="Filtrar por host..." oninput="filterFindings()" />
+    </div>
+    <table id="findingsTable">
+      <thead>
+        <tr>
+          <th>Severidad</th>
+          <th>Host</th>
+          <th>Categoría</th>
+          <th>Título</th>
+          <th>Evidencia</th>
+          <th>Recomendación</th>
+          <th>MITRE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in report.findings %}
+        <tr data-sev="{{ f.severidad_raw }}" data-cat="{{ f.categoria }}" data-host="{{ f.host|lower }}">
+          <td><span class="badge sev-{{ f.severidad }}">{{ f.severidad }}</span></td>
+          <td>{{ f.host }}</td>
+          <td>{{ f.categoria }}</td>
+          <td>{{ f.titulo }}</td>
+          <td><code>{{ f.evidencia[:180] }}</code></td>
+          <td>{{ f.recomendacion }}</td>
+          <td>{{ f.mitre_id or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">Sin hallazgos registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>3. Detalle por Servidor</h2>
+    {% for h in report.hosts %}
+    <div style="margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px;">
+      <h3>{{ h.hostname }} ({{ h.ip_address }}) — SO: {{ h.os_type|upper }} | Estado: {{ h.status|upper }}</h3>
+      <p><strong>CPU:</strong> {{ h.cpu_pct }}% | <strong>RAM:</strong> {{ h.mem_pct }}% | <strong>Swap:</strong> {{ h.swap_pct }}% | <strong>Max Disco:</strong> {{ h.disk_pct }}% | <strong>Admins:</strong> {{ h.admins_count }} | <strong>Errores Log:</strong> {{ h.log_errors }}</p>
+      {% if h.ports_table %}
+      <table>
+        <thead><tr><th>Puerto</th><th>Proto</th><th>Dirección</th><th>Proceso</th><th>Regla</th><th>Estado</th></tr></thead>
+        <tbody>
+          {% for p in h.ports_table %}
+          <tr>
+            <td>{{ p.port }}</td>
+            <td>{{ p.protocol }}</td>
+            <td>{{ p.address }}</td>
+            <td>{{ p.process }}</td>
+            <td>{{ p.allowing_rule }}</td>
+            <td class="status-{{ p.status|replace(' ', '-') }}">{{ p.status }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="section">
+    <h2>4. Drift respecto a Línea Base</h2>
+    {% for d in report.drifts %}
+    <p><strong>{{ d.hostname }} (Baseline v{{ d.baseline_version }}):</strong>
+      Servicios +{{ d.added_services|length }}/-{{ d.removed_services|length }},
+      Puertos +{{ d.added_ports|length }}/-{{ d.removed_ports|length }},
+      Admins +{{ d.added_admins|length }}/-{{ d.removed_admins|length }}
+    </p>
+    {% else %}
+    <p>No se detectaron cambios (drift) respecto a las líneas base activas.</p>
+    {% endfor %}
+  </div>
+
+  <div class="section">
+    <h2>5. Recomendaciones Tipo SOC &amp; Remediación</h2>
+    <table>
+      <thead><tr><th>Prioridad</th><th>Host</th><th>Acción Sugerida</th><th>Comando de Remediación</th><th>MITRE ATT&amp;CK</th></tr></thead>
+      <tbody>
+        {% for f in report.soc_recommendations %}
+        <tr>
+          <td><span class="badge sev-{{ f.severidad }}">{{ f.severidad }}</span></td>
+          <td>{{ f.host }}</td>
+          <td>{{ f.recomendacion }}</td>
+          <td><code>{{ f.comando_sugerido or "Revisión manual requerida" }}</code></td>
+          <td>{{ f.mitre_id or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">Sin recomendaciones pendientes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>6. Anexo Técnico</h2>
+    <p>Reporte generado automáticamente por <strong>soc-monitor</strong>. Archivos asociados: HTML interactivo, PDF imprimible y JSON estructurado para análisis con IA (Gemini / Meta AI).</p>
+  </div>
+
+  <script>
+    function filterFindings() {
+      const sev = document.getElementById("filterSev").value.toLowerCase();
+      const cat = document.getElementById("filterCat").value.toLowerCase();
+      const host = document.getElementById("filterHost").value.toLowerCase();
+      const rows = document.querySelectorAll("#findingsTable tbody tr[data-sev]");
+      rows.forEach(r => {
+        const mSev = !sev || r.dataset.sev === sev;
+        const mCat = !cat || r.dataset.cat.toLowerCase() === cat;
+        const mHost = !host || r.dataset.host.includes(host);
+        r.style.display = (mSev && mCat && mHost) ? "" : "none";
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Usuarios del Sistema - soc-monitor{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Usuarios de la Consola Web y Roles</h1>
+<form method="post" action="/users" class="bg-slate-900 border border-slate-800 p-4 rounded-lg mb-6 grid grid-cols-4 gap-2 text-sm">
+  <input name="username" placeholder="Usuario" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+  <input name="password" type="password" placeholder="Contraseña" required class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" />
+  <select name="role" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+    <option value="admin">admin</option>
+    <option value="operador">operador</option>
+    <option value="lector">lector</option>
+  </select>
+  <button class="bg-cyan-600 hover:bg-cyan-500 rounded font-semibold">Crear Usuario</button>
+</form>
+
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-800"><th class="py-2">Usuario</th><th>Rol</th><th>Activo</th><th>Último Login</th><th>Acción</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="border-b border-slate-800/60">
+        <td class="py-2">{{ u.username }}</td><td>{{ u.role }}</td><td>{{ "Sí" if u.is_active else "No" }}</td><td>{{ u.last_login_at or "-" }}</td>
+        <td><form method="post" action="/users/{{ u.id }}/toggle"><button class="bg-slate-800 px-2 py-1 rounded text-xs">Activar/Desactivar</button></form></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily SOC-Monitor Infrastructure Scan at 02:00
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+Unit=soc-monitor-scan.service
+
+[Install]
+WantedBy=timers.target

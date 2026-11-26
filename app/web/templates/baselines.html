@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Baselines - soc-monitor{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Líneas Base Versionadas (Baselines)</h1>
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-lg">
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-800"><th class="py-2">Host</th><th>Versión Activa</th><th>Aprobada por</th><th>Servicios</th><th>Puertos</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for h in hosts %}
+      {% set b = baseline_map.get(h.id) %}
+      <tr class="border-b border-slate-800/60">
+        <td class="py-2 font-medium">{{ h.hostname }}</td>
+        <td>{{ "v" ~ b.version if b else "Sin baseline" }}</td>
+        <td>{{ b.approved_by if b else "-" }}</td>
+        <td>{{ b.services_snapshot|length if b else 0 }}</td>
+        <td>{{ b.ports_snapshot|length if b else 0 }}</td>
+        <td class="py-2">
+          {% if user.role in ["admin", "operador"] %}
+          <form method="post" action="/baselines/{{ h.id }}/approve">
+            <button class="bg-emerald-700 hover:bg-emerald-600 px-3 py-1 rounded text-xs">Aprobar Nueva Baseline</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

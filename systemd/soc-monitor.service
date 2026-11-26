@@ -1,0 +1,22 @@
+[Unit]
+Description=SOC-Monitor Web Console & Daily Infrastructure Scanner
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=socmonitor
+Group=socmonitor
+WorkingDirectory=/opt/soc-monitor
+EnvironmentFile=/etc/soc-monitor/.env
+ExecStart=/opt/soc-monitor/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-certfile ${SSL_CERTFILE} --ssl-keyfile ${SSL_KEYFILE}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/soc-monitor /var/log/soc-monitor
+
+[Install]
+WantedBy=multi-user.target
