@@ -14,7 +14,7 @@ dnf -y install \
   python3.12 python3.12-pip python3.12-devel \
   postgresql-server postgresql-contrib \
   pango cairo gdk-pixbuf2 libffi-devel gcc openssl \
-  policycoreutils-python-utils firewalld logrotate git
+  policycoreutils-python-utils firewalld logrotate git rsync
 
 echo "[2/8] Creating service user and directories..."
 id -u "${SERVICE_USER}" >/dev/null 2>&1 || useradd --system --home-dir "${APP_DIR}" --shell /sbin/nologin "${SERVICE_USER}"
@@ -24,10 +24,24 @@ echo "[3/8] Initializing PostgreSQL 16..."
 if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
   postgresql-setup --initdb
 fi
+
+PG_HBA="/var/lib/pgsql/data/pg_hba.conf"
+if [ -f "${PG_HBA}" ]; then
+  sed -i -E 's/^(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)ident/\1scram-sha-256/' "${PG_HBA}"
+  sed -i -E 's/^(host\s+all\s+all\s+::1\/128\s+)ident/\1scram-sha-256/' "${PG_HBA}"
+fi
+
 systemctl enable --now postgresql
+systemctl reload postgresql
 
 DB_PASS="${DB_PASS:-$(openssl rand -hex 16)}"
-su - postgres -c "psql -tc \"SELECT 1 FROM pg_roles WHERE rolname='socmonitor'\" | grep -q 1 || psql -c \"CREATE USER socmonitor WITH PASSWORD '${DB_PASS}';\""
+if [ -f "${CONF_DIR}/.env" ]; then
+  EXISTING_PASS=$(grep -E '^DATABASE_URL=' "${CONF_DIR}/.env" | sed -E 's|.*://[^:]+:([^@]+)@.*|\1|' || true)
+  if [ -n "${EXISTING_PASS}" ]; then
+    DB_PASS="${EXISTING_PASS}"
+  fi
+fi
+su - postgres -c "psql -tc \"SELECT 1 FROM pg_roles WHERE rolname='socmonitor'\" | grep -q 1 && psql -c \"ALTER USER socmonitor WITH PASSWORD '${DB_PASS}';\" || psql -c \"CREATE USER socmonitor WITH PASSWORD '${DB_PASS}';\""
 su - postgres -c "psql -tc \"SELECT 1 FROM pg_database WHERE datname='socmonitor'\" | grep -q 1 || psql -c \"CREATE DATABASE socmonitor OWNER socmonitor;\""
 
 echo "[4/8] Copying application and setting up Python 3.12 venv..."
