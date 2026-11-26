@@ -86,6 +86,21 @@ sudo /opt/soc-monitor/scripts/update.sh
 
 ---
 
+## Notificaciones por Correo con Gmail SMTP (v2.0)
+
+`soc-monitor` v2.0 envía automáticamente cada reporte diario (adjuntando **JSON para IA**, **HTML interactivo**, **PDF** y el extracto de logs `soc-monitor-scan-<id>.log`) usando SMTP autenticado de Gmail:
+
+1. En tu cuenta Google, activa la **Verificación en 2 pasos** y genera una **Contraseña de aplicación (App Password)** de 16 caracteres.
+2. En la consola web ve a **Configuración** (`/settings`):
+   - **Enviar reportes por correo**: `Habilitado`
+   - **Servidor SMTP**: `smtp.gmail.com` | **Puerto**: `587` (`STARTTLS`)
+   - **Usuario Gmail**: tu dirección `@gmail.com` o Google Workspace
+   - **App Password**: pega la contraseña de aplicación (se cifra con **Fernet** antes de guardarse en PostgreSQL)
+   - **Destinatarios**: uno o más correos separados por coma
+3. Haz clic en **Guardar Configuración** y luego en **Enviar Correo de Prueba** para verificar la entrega inmediata.
+
+---
+
 ## Pruebas Automatizadas
 
 ```bash

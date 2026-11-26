@@ -63,6 +63,15 @@ class Settings(BaseSettings):
     logs_dir: Path = Path("/var/log/soc-monitor")
     log_level: str = "INFO"
 
+    # Notificaciones Email / Gmail SMTP (v2.0)
+    smtp_enabled: bool = False
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_use_tls: bool = True
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_to: str = ""
+
     # Bootstrap initial admin user
     initial_admin_user: str = "socadmin"
     initial_admin_password: str = "ChangeMe!SocAdmin2026"

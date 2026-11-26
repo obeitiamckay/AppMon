@@ -1,27 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Configuración - soc-monitor{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">Configuración General y Respaldo</h1>
+<h1 class="text-2xl font-bold mb-4">Configuración General, Gmail SMTP y Respaldo</h1>
+{% if msg %}
+<div class="bg-cyan-950 border border-cyan-700 text-cyan-200 px-4 py-2 rounded mb-4 text-sm">{{ msg }}</div>
+{% endif %}
+
 <div class="grid grid-cols-2 gap-6 text-sm">
   <form method="post" action="/settings" class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3">
-    <h2 class="font-semibold text-base">Parámetros Generales</h2>
-    <div><label class="block text-xs text-slate-400 mb-1">Retención de reportes/backups (días)</label><input name="retention_days" value="{{ settings.get('retention_days', '90') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
-    <div><label class="block text-xs text-slate-400 mb-1">Hora de escaneo diario (UTC)</label><input name="scan_hour" value="{{ settings.get('scan_hour', '2') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
-    <div><label class="block text-xs text-slate-400 mb-1">Servidor SMTP (notificaciones)</label><input name="smtp_host" value="{{ settings.get('smtp_host', '') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
-    <div><label class="block text-xs text-slate-400 mb-1">Email destino alertas SOC</label><input name="smtp_to" value="{{ settings.get('smtp_to', '') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+    <h2 class="font-semibold text-base">Parámetros Generales &amp; Notificaciones Gmail SMTP</h2>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="block text-xs text-slate-400 mb-1">Retención (días)</label><input name="retention_days" value="{{ settings.get('retention_days', '90') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+      <div><label class="block text-xs text-slate-400 mb-1">Hora escaneo (UTC)</label><input name="scan_hour" value="{{ settings.get('scan_hour', '2') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Enviar reportes por correo</label>
+        <select name="smtp_enabled" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+          <option value="true" {% if settings.get('smtp_enabled') == 'true' %}selected{% endif %}>Habilitado</option>
+          <option value="false" {% if settings.get('smtp_enabled', 'false') != 'true' %}selected{% endif %}>Deshabilitado</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">STARTTLS</label>
+        <select name="smtp_use_tls" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5">
+          <option value="true" {% if settings.get('smtp_use_tls', 'true') == 'true' %}selected{% endif %}>Sí (Puerto 587)</option>
+          <option value="false" {% if settings.get('smtp_use_tls') == 'false' %}selected{% endif %}>SSL Directo (465)</option>
+        </select>
+      </div>
+      <div><label class="block text-xs text-slate-400 mb-1">Servidor SMTP</label><input name="smtp_host" value="{{ settings.get('smtp_host', 'smtp.gmail.com') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+      <div><label class="block text-xs text-slate-400 mb-1">Puerto SMTP</label><input name="smtp_port" value="{{ settings.get('smtp_port', '587') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+    </div>
+    <div><label class="block text-xs text-slate-400 mb-1">Usuario Gmail (ej. alertas@gmail.com)</label><input name="smtp_user" value="{{ settings.get('smtp_user', '') }}" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+    <div><label class="block text-xs text-slate-400 mb-1">App Password de Gmail (cifrado Fernet, dejar vacío para mantener)</label><input type="password" name="smtp_password" placeholder="xxxx xxxx xxxx xxxx" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
+    <div><label class="block text-xs text-slate-400 mb-1">Destinatarios (separados por coma)</label><input name="smtp_to" value="{{ settings.get('smtp_to', '') }}" placeholder="soc-ia@tuempresa.com, admin@gmail.com" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5" /></div>
     <button class="bg-cyan-600 hover:bg-cyan-500 px-4 py-1.5 rounded font-semibold">Guardar Configuración</button>
   </form>
 
-  <div class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-4">
-    <h2 class="font-semibold text-base">Exportar / Importar Configuración</h2>
-    <div class="flex gap-3">
-      <a href="/settings/export/json" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded">Exportar JSON</a>
-      <a href="/settings/export/yaml" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded">Exportar YAML</a>
+  <div class="space-y-6">
+    <div class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3">
+      <h2 class="font-semibold text-base">Prueba de Correo Gmail SMTP</h2>
+      <p class="text-xs text-slate-400">Envía un correo de prueba con la configuración guardada para validar autenticación con Gmail.</p>
+      <form method="post" action="/settings/test-email">
+        <button class="bg-amber-600 hover:bg-amber-500 px-4 py-1.5 rounded font-semibold">Enviar Correo de Prueba</button>
+      </form>
     </div>
-    <form method="post" action="/settings/import" enctype="multipart/form-data" class="space-y-2 border-t border-slate-800 pt-4">
-      <input type="file" name="file" accept=".json,.yaml,.yml" required class="block w-full text-xs" />
-      <button class="bg-emerald-600 hover:bg-emerald-500 px-4 py-1.5 rounded font-semibold">Importar Configuración</button>
-    </form>
+
+    <div class="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-4">
+      <h2 class="font-semibold text-base">Exportar / Importar Configuración</h2>
+      <div class="flex gap-3">
+        <a href="/settings/export/json" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded">Exportar JSON</a>
+        <a href="/settings/export/yaml" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded">Exportar YAML</a>
+      </div>
+      <form method="post" action="/settings/import" enctype="multipart/form-data" class="space-y-2 border-t border-slate-800 pt-4">
+        <input type="file" name="file" accept=".json,.yaml,.yml" required class="block w-full text-xs" />
+        <button class="bg-emerald-600 hover:bg-emerald-500 px-4 py-1.5 rounded font-semibold">Importar Configuración</button>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

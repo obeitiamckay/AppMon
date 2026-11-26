@@ -23,6 +23,7 @@ from app.discovery.baseline_service import compute_baseline_diff, create_initial
 from app.firewall.analyzer import analyze_firewall_and_ports
 from app.models.inventory import CredentialRef, Host
 from app.models.monitoring import ScanRun
+from app.notifications.email_sender import send_report_email
 from app.reporting.generator import generate_scan_report
 from app.security import SecretCipher, get_vault_secret
 from app.users.admin_audit import audit_admin_users
@@ -238,9 +239,10 @@ def run_full_scan(
         scan_run.finished_at = datetime.now(timezone.utc)
         db.flush()
 
-        generate_scan_report(db, scan_run, host_runtime_data)
+        report_rec = generate_scan_report(db, scan_run, host_runtime_data)
         db.commit()
         db.refresh(scan_run)
+        send_report_email(db, scan_run, report_rec)
         logger.info(
             "Scan #%d completed: total=%d ok=%d warn=%d crit=%d unreach=%d",
             scan_run.id,

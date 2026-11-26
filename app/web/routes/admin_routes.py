@@ -15,7 +15,8 @@ from app.database import get_db
 from app.models.inventory import HostGroup, Threshold
 from app.models.security_audit import AdminUserAllowed, FirewallAllowedRule
 from app.models.system import AppSetting, AuditLog, SystemUser
-from app.security import hash_password
+from app.notifications.email_sender import send_test_email
+from app.security import SecretCipher, hash_password
 from app.web.deps import get_current_user, record_audit, require_role, templates
 
 router = APIRouter(tags=["admin"])
@@ -24,38 +25,66 @@ router = APIRouter(tags=["admin"])
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(
     request: Request,
+    msg: str | None = None,
     user: SystemUser = Depends(require_role("admin", "operador")),
     db: Session = Depends(get_db),
 ):
     rows = {s.key: s.value for s in db.execute(select(AppSetting)).scalars().all()}
-    return templates.TemplateResponse(request, "settings.html", {"user": user, "settings": rows})
+    return templates.TemplateResponse(request, "settings.html", {"user": user, "settings": rows, "msg": msg})
 
 
 @router.post("/settings")
 def update_settings(
     request: Request,
     retention_days: str = Form("90"),
-    smtp_host: str = Form(""),
-    smtp_to: str = Form(""),
     scan_hour: str = Form("2"),
+    smtp_enabled: str = Form("false"),
+    smtp_host: str = Form("smtp.gmail.com"),
+    smtp_port: str = Form("587"),
+    smtp_use_tls: str = Form("true"),
+    smtp_user: str = Form(""),
+    smtp_password: str = Form(""),
+    smtp_to: str = Form(""),
     user: SystemUser = Depends(require_role("admin")),
     db: Session = Depends(get_db),
 ):
     updates = {
         "retention_days": retention_days.strip(),
-        "smtp_host": smtp_host.strip(),
-        "smtp_to": smtp_to.strip(),
         "scan_hour": scan_hour.strip(),
+        "smtp_enabled": smtp_enabled.strip(),
+        "smtp_host": smtp_host.strip() or "smtp.gmail.com",
+        "smtp_port": smtp_port.strip() or "587",
+        "smtp_use_tls": smtp_use_tls.strip(),
+        "smtp_user": smtp_user.strip(),
+        "smtp_to": smtp_to.strip(),
     }
+    if smtp_password.strip():
+        updates["smtp_password_enc"] = SecretCipher().encrypt(smtp_password.strip())
+
     for k, v in updates.items():
         row = db.get(AppSetting, k)
         if row:
             row.value = v
         else:
             db.add(AppSetting(key=k, value=v))
-    record_audit(db, user.username, "update_settings", "app_settings", None, str(updates), request)
+
+    audit_summary = {k: ("***REDACTED***" if k == "smtp_password_enc" else v) for k, v in updates.items()}
+    record_audit(db, user.username, "update_settings", "app_settings", None, str(audit_summary), request)
     db.commit()
-    return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/settings?msg=Configuración+guardada", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/test-email")
+def test_email_route(
+    request: Request,
+    user: SystemUser = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    ok, message = send_test_email(db)
+    record_audit(db, user.username, "test_email", "app_settings", None, f"ok={ok}: {message[:120]}", request)
+    db.commit()
+    prefix = "OK" if ok else "ERROR"
+    return RedirectResponse(url=f"/settings?msg={prefix}:+{message[:100]}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/settings/export/{fmt}")
