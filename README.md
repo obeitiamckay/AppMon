@@ -61,9 +61,17 @@ sudo systemctl enable --now soc-monitor.timer
 ## Configuración Inicial y Onboarding de los Primeros 5 Servidores
 
 1. Accede a la consola web en `https://<IP_SERVIDOR>:8443` con las credenciales iniciales definidas en `/etc/soc-monitor/.env` (`socadmin` / `ChangeMe!SocAdmin2026`) y cambia la contraseña desde **Usuarios del Sistema**.
-2. Prepara las cuentas de solo lectura en los servidores destino:
-   - **Linux**: ejecuta `scripts/setup_linux_target.sh '<llave_publica_ssh>'` en cada servidor Linux para crear el usuario `socmon_ro` con permisos `sudo` estrictamente de lectura.
-   - **Windows**: ejecuta `scripts/setup_windows_target.ps1 -Password '<Pass>'` en cada servidor Windows para crear `socmon_ro` (sin privilegios de Domain Admin) y habilitar WinRM HTTPS en el puerto `5986`.
+2. Prepara las cuentas de solo lectura en los servidores destino (los scripts están en `/opt/soc-monitor/scripts/` o en GitHub):
+   - **Linux**: descarga y ejecuta `setup_linux_target.sh` en cada servidor Linux para crear `socmon_ro` con `sudo` de solo lectura:
+     ```bash
+     curl -fsSLO https://raw.githubusercontent.com/obeitiamckay/AppMon/main/scripts/setup_linux_target.sh
+     sudo bash setup_linux_target.sh '<llave_publica_ssh>'
+     ```
+   - **Windows**: descarga y ejecuta `setup_windows_target.ps1` en PowerShell (Administrador) para crear `socmon_ro` (sin Domain Admin) y habilitar WinRM HTTPS `5986`:
+     ```powershell
+     Invoke-WebRequest -Uri "https://raw.githubusercontent.com/obeitiamckay/AppMon/main/scripts/setup_windows_target.ps1" -OutFile "setup_windows_target.ps1"
+     .\setup_windows_target.ps1 -Password "<Pass>"
+     ```
 3. En la consola web ve a **Grupos & Umbrales** y crea grupos (ej. `Web`, `BD`, `Windows-App`).
 4. En **Inventario & Credenciales**:
    - Crea las credenciales (`SSH Private Key` para Linux, `WinRM NTLM` para Windows). Se cifran con **Fernet** antes de guardarse en PostgreSQL.
